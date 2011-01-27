@@ -1,4 +1,4 @@
-=== Posthaste ===
+=== Posthaste: _create content from the frontend_ ===
 Contributors: smajda, acustica
 Author URI: http://jon.smajda.com
 Author URI: http://www.acusti.ca
