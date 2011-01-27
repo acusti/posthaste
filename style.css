@@ -30,7 +30,7 @@
 #posthaste-form div.rich-edit label { display:none; }
 
 #posthaste-form .title-wrap label,
-#posthaste-form #post-title {
+#posthaste-form #post_title {
 	display:block;
 	font-size:1.7em;
 	padding:3px 4px;
@@ -39,36 +39,72 @@
 }
 
 #posthaste-form .content-wrap label,
-#posthaste-form #post-content {
+#posthaste-form #post_content {
 	padding:3px 4px;
 	width:92%;
 	height:12em;
 }
-/* Rich editor: */
+/* BEGIN - Rich editor: */
 #posthaste-form .rich-edit { width:93%; }
 #posthaste-form .rich-edit table {
 	margin:0;
 }
 #posthaste-form #editor-toolbar { display:none; }
-#post-content_tbl tr.mceFirst,
-#post-content_tbl .mceIframeContainer {
-	background-color:#e4e4e4;
-}
-#post-content_tbl tr.mceLast {
-	background-color:#ededed;
-}
-	#post-content_tbl .mceToolbar .mceButtonEnabled {
-		background-color:#f4f4f4;
-	}
-	#post-content_tbl .mceToolbar .mceButtonActive {
-		background-color:#ccc;
-	}
-#posthaste-form #post-content_tbl td {
+#posthaste-form #post_content_tbl td {
 	padding:3px 2px;
 }
-	#posthaste-form #post-content_tbl td td {
-		padding:0 2px;
+	#posthaste-form #post_content_tbl .mceToolbar td {
+		display:-moz-inline-stack;
+		display:inline-block;
+		vertical-align:top;
+		zoom:1;
+		*display:inline;
+		padding:0 1px;
 	}
+	#posthaste-form .mceToolbar .mceButton {
+		margin:1px;
+	}
+	#posthaste-form .mceToolbar .mceSeparator {
+		width:10px;
+	}
+#post_content_tbl tr.mceFirst,
+#post_content_tbl .mceIframeContainer {
+	background-color:#e4e4e4;
+}
+#post_content_tbl tr.mceLast {
+	background-color:#ededed;
+}
+	#post_content_tbl .mceToolbar .mceButtonEnabled {
+		background-color:#f4f4f4;
+	}
+	#post_content_tbl .mceToolbar .mceButtonActive {
+		background-color:#ccc;
+	}
+/* END - Rich editor: */
+
+/* BEGIN - Auction fields: */
+#posthaste-form .prospress-fields {
+	float:right;
+	margin-top:-55px;
+	width:50%;
+}
+	#posthaste-form .curtime { }
+		#posthaste-form #endtimestampdiv input {
+			font-size:11px;
+		}
+		
+		#posthaste-form .prospress-fields .price-label {
+			float:left;
+			margin:20px 15px 0px 0px;
+		}
+		#posthaste-form .prospress-fields #start-price {
+			float:left;
+			margin:17px 15px 0px 0px;
+			width:75px;
+		}
+	
+
+/* END - Auction fields: */
 
 #posthaste-form .taxonomy-label,
 #posthaste-form .tags-label,
@@ -82,25 +118,27 @@
 	margin:20px 15px 0 0;
 	font-size:20px;/* this seems necessary in safari to achieve visual display of 13px; check in other browsers */
 }
-#posthaste-form #tags {
+#posthaste-form #tags_input {
 	float:left;
 	width:200px;
 	margin:17px 15px 0 0;
 }
 
-#posthaste-form label#postStatusLabel {display: inline;}
-#posthaste-form input#postStatus {margin-left: 5px;}
+#posthaste-form .status-wrap label {display: inline;}
+#posthaste-form input#post_status {margin-left: 5px;}
 
 #posthaste-form input#post-submit {
 	display:block;
 	float:right;
-	margin:17px 80px 40px 0;
+	margin:17px 80px 40px 500px;
 }
 
 div.posthaste-notice {
 	font-weight:bold;
 	text-align:center;
-	border:1px solid #888;
+	border:1px solid #ccc;
+    background-color:#f6f6f6; 
+    -moz-border-radius:8px; -webkit-border-radius:8px; border-radius:8px;
 	padding:13px 20px;
 	margin:1em auto;
 	width:80%;

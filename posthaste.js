@@ -8,11 +8,11 @@ jQuery(function($) {
 		jQuery("ul.ac_results").css("display", "none"); // Hide tag suggestion box if displayed
 	
 	jQuery("#post-submit").click(function(e) {
-		if (jQuery.trim(jQuery("#post-content").val()).length < 1) {
+		if (jQuery.trim(jQuery("#post_content").val()).length < 1) {
 			e.preventDefault();
 			alert("There must be some content");
-			jQuery("#post-content").css("border-color", "#333");
-			jQuery("#post-content").focus();
+			jQuery("#post_content").css("border-color", "#333");
+			jQuery("#post_content").focus();
 		}
 	});
 	
@@ -20,7 +20,7 @@ jQuery(function($) {
 	jQuery(document).ready(function() {
 		
 		// show/hide labels for title input and content textarea
-		jQuery("#post-title, #post-content").focus(function(e) {
+		jQuery("#post_title, #post_content").focus(function(e) {
 			jQuery("label[for='"+jQuery(this).attr("name")+"']").css("visibility", "hidden");
 		}).blur(function(e) {
 			if (jQuery(this).val().length < 1)
@@ -29,7 +29,7 @@ jQuery(function($) {
 		
 		// select visual (tinyMCE) editor, if applicable
 		if (typeof switchEditors != 'undefined') {
-			switchEditors.go('post-content', 'tinymce');
+			switchEditors.go('post_content', 'tinymce');
 		}
 	
 	});
