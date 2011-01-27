@@ -44,7 +44,7 @@ License: GPL
  * VARIABLES 
  ***********/
 $phVars = array(
-		'postValues' => '', // store values of a post in case of error to repopulate form
+		'post_array' => '', // store values of a post in case of error to repopulate form
 		'version' => '2.0.0',
 		'prospress' => false
 	);
@@ -97,44 +97,40 @@ function posthasteCustomCheck() {
 	// check post types to see if they match settings
 	
 	// get post types (if empty, fill in defaults & then get them)
-	if ( !$post_types = get_option( 'posthaste_post_types' ) ) {
+	if ( ! $options = get_option( 'posthaste_post_types' ) ) {
 		posthasteAddDefaultPostTypes();
-		$post_types = get_option( 'posthaste_post_types' );
+		$options = get_option( 'posthaste_post_types' );
 	}
-	// how to do this:
-	// 1. check if single; in that case, just use get_post_type
 	
-	if ( is_single() ) {
-		$post_type = get_post_type();
-		if ( $post_type && isset( $options[$post_type] ) ) {
+	// don't need to check if user is logged in; it's already been done
+	// how to do this:
+	// 1. check if it's the prospress index
+	if ( is_page('auctions') && isset( $options['auctions'] ) ) {
+		return 'auctions';
+	}
+	
+	// 2. check get_post_type(); if it gives us something usable, use it	
+	$post_type = get_post_type();
+	if ( $post_type ) {
+	 	if ( isset( $options[$post_type] ) ) {
 			// TODO: check user's permissions
 			return $post_type;
 		}
 	}
-	else { // don't need to check if user is logged in; it's already been done
-		// hack to display form and set it to post_type = auction if user has permission and global $bp->current_component == 'profile' && $bp->current_action == 'public' OR if it's the auction index page
-		global $bp;
-		if ( ( $bp->current_component == 'profile' && $bp->current_action == 'public' )
-			|| ( $bp->current_component == 'activity' )
-			|| ( is_page( 'auctions') ) ) {
-			return 'auctions';
-		}
-		elseif ( current_user_can( 'publish_posts' ) ) {
-			return 'post';
-		}
-		else {
-			return false;
-		}
+	elseif ( current_user_can( 'publish_posts' ) ) {
+		return 'post';
 	}
+	
+	return false;
 
 }
 
 // Which category to use
 function posthasteCatCheck() {
 	if ( is_category() )
-		return get_cat_ID ( single_cat_title( '', false ) );
+		return get_cat_ID( single_cat_title( '', false ) );
 	else 
-		return get_option ( 'default_category', 1 );
+		return get_option( 'default_category', 1 );
 }
 
 // Which tag to use
@@ -186,7 +182,25 @@ function posthasteHeader() {
 		// TODO: clean up and prep $_POST['tags_input']
 		//	add any other custom validation we want to do here
 		
-		// booyah (wp_insert_post() does sanitizing, prepping of variables, everything!):
+		// if title was kept empty, trim content for title 
+		// & add to 'asides' category if it exists (unless another
+		// category was explicitly chosen in form)
+		if ( empty($_POST['post_title']) ) {
+			$_POST['post_title'] = strip_tags( $_POST['post_content'] );	
+			if( strlen( $_POST['post_title'] ) > 40 ) {
+				$_POST['post_title'] = substr( $_POST['post_title'], 0, 40 ) . ' … ';
+			}
+			
+			if ( ! $asides_cat = get_option( 'posthaste_asides' ) )
+				$asides_cat = 'asides';
+			// if "asides" category exists & no category was specified, put in asides category
+			if ( ( ! isset($_POST['post_category']) || ! $_POST['post_category'] )
+				&& $asides_catid = get_cat_id($asides_cat) ) {
+				$_POST['post_category'] = $asides_catid;
+			}
+		} 
+		
+		// create that post (wp_insert_post() does sanitizing, prepping of variables, everything!):
 		$post_id = wp_insert_post( $_POST );
 		
 		// include auction specific logic, if appropriate
@@ -221,8 +235,37 @@ function posthasteHeader() {
 			}
 			
 		}
+		// process post thumbnail
+		if ( get_option('posthaste_post_thumbnail') && current_theme_supports('post-thumbnails', $_POST['post_type']) && post_type_supports($_POST['post_type'], 'thumbnail') && ! is_multisite() ) {
+			if ( ! empty( $_FILES ) && isset($_FILES['post_thumbnail']) && ! $_FILES['error'] ) {
+			
+				if ( ( ($_FILES['post_thumbnail']['type'] == 'image/gif')
+						|| ($_FILES['post_thumbnail']['type'] == 'image/jpeg')
+						|| ($_FILES['post_thumbnail']['type'] == 'image/png' ) )
+					&& ($_FILES['post_thumbnail']['size'] < 409600) ) {
+				
+					// code from http://goldenapplesdesign.com/2010/07/03/front-end-file-uploads-in-wordpress/
+					require_once( ABSPATH . '/wp-admin/includes/image.php' );
+					require_once( ABSPATH . '/wp-admin/includes/file.php' );
+					require_once( ABSPATH . '/wp-admin/includes/media.php' );
+				
+					$attach_id = media_handle_upload( 'post_thumbnail', $post_id );
+					
+					// set as post thumbnail:
+					update_post_meta( $post_id, '_thumbnail_id', $attach_id );
+					
+				}
+				else {
+					echo '<h5>Images must be either JPEG, GIF, or PNG and less than 400 KB</h5>';
+				}
+			}
+			else {
+				echo '<h5>There was an error uploading your featured image. Please try again.</h5>';
+			}
+		}
 		
-		$returnUrl = $_POST['posthasteUrl'];
+		// finishing up
+		$returnUrl = $_POST['posthaste_url'];
 		$urlGlue = ( strpos( $returnUrl, '?' ) === false ? '?' : '&' );
 		
 		// now redirect back to blog
@@ -255,8 +298,8 @@ function posthasteForm() {
 		$post_types = get_post_types( '', 'objects' );
 		$post_type_name = $post_types[$post_type]->labels->singular_name;
 		
-		// set up posthasteUrl:
-		$posthasteUrl = $_SERVER['REQUEST_URI'];
+		// set up posthaste_url:
+		$posthaste_url = $_SERVER['REQUEST_URI'];
 		
 		// Have we just successfully posted something?
 		if ( isset( $_GET['posthaste'] ) ) : ?>
@@ -267,12 +310,12 @@ function posthasteForm() {
 			<?php echo $post_type_name ?> successfully published. <a href="<?php echo get_permalink( (int) $_GET['posthaste'] ) ?>">View it here</a>.
 			<?php endif; ?>
 			</div>
-			<?php // prepare posthasteUrl
-			if ( ( $phKey = strpos( $posthasteUrl, 'posthaste=' ) ) !== false ) {
-				$replace = substr( $posthasteUrl, $phKey-1 );
+			<?php // prepare posthaste_url
+			if ( ( $phKey = strpos( $posthaste_url, 'posthaste=' ) ) !== false ) {
+				$replace = substr( $posthaste_url, $phKey-1 );
 				$phKeyEnd = strpos( $replace, '&', 1 );
 				if ( $phKeyEnd ) $replace = substr( $replace, 1, $phKeyEnd );
-				$posthasteUrl = str_replace( $replace, '', $posthasteUrl );
+				$posthaste_url = str_replace( $replace, '', $posthaste_url );
 			}
 			?>
 		<?php endif; ?>
@@ -283,7 +326,7 @@ function posthasteForm() {
 		$user = get_userdata( $current_user->ID );
 		$nickname = attribute_escape( $user->nickname ); ?>
 		
-		<form id="new-post" name="new-post" method="post">
+		<form id="new-post" name="new-post" method="post" enctype="multipart/form-data">
 			<input type="hidden" name="action" value="post" />
 			
 			<?php wp_nonce_field( 'new-post' ); ?>
@@ -299,7 +342,7 @@ function posthasteForm() {
 				endif; ?>
 
 			<?php if ( $fields['greeting and links'] ) : ?>
-			<b>Hello, <?php echo $nickname; ?>!</b> <a href="<?php bloginfo( 'wpurl' );  ?>/wp-admin/post-new.php" title="Go to the full WordPress editor">Write a new post</a>, <a href="<?php bloginfo( 'wpurl' );  ?>/wp-admin/" title="Manage the blog">Manage the blog</a>, or <?php wp_loginout(); ?>.
+			<b>Hello, <?php echo $nickname; ?>!</b> <a href="<?php bloginfo( 'wpurl' );	?>/wp-admin/post-new.php" title="Go to the full WordPress editor">Write a new post</a>, <a href="<?php bloginfo( 'wpurl' );	 ?>/wp-admin/" title="Manage the blog">Manage the blog</a>, or <?php wp_loginout(); ?>.
 			<?php endif; ?>
 
 			</div>
@@ -328,11 +371,11 @@ function posthasteForm() {
 				<?php else :
 					$tagselect = posthasteTagCheck();
 					echo '<input type="hidden" value="'
-						  .$tagselect.'" name="tags_input" id="tags_input">';
+							.$tagselect.'" name="tags_input" id="tags_input">';
 				endif; ?>
 				
 				<?php if ( $fields['categories'] ) : ?>
-				<div class="field-wrap cats-wrap"></div><label for="post_category" class="cats-label">Category:</label>
+				<div class="field-wrap cats-wrap"><label for="post_category" class="cats-label">Category:</label>
 				<?php
 					$catselect = posthasteCatCheck();
 					wp_dropdown_categories( array(
@@ -415,26 +458,22 @@ function posthasteForm() {
 			
 			<?php endif; ?>
 
-			<?php if ( get_option('posthaste_feat_image') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) : ?>
-			<div class="featured-image">
-			<?php 
-			global $post;
-			$thumbnail_id = get_post_meta( $post->ID, '_thumbnail_id', true );
-			$feat_image_html = _wp_post_thumbnail_html( $thumbnail_id );
-			
-			$feat_image_html = str_replace('media-upload.php', 'wp-admin/media-upload.php', $feat_image_html);
-			
-			echo $feat_image_html;
-			
-			//add_meta_box('postimagediv', __('Featured Image'), 'post_thumbnail_meta_box', $post_type, 'side', 'low'); ?>
+			<?php if ( get_option('posthaste_post_thumbnail') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) : ?>
+			<div class="image-fields">
+			<?php // with a max file size of 400 KB: ?>
+				<div class="field-wrap">
+					<label for="post_thumbnail" class="taxonomy-label upload-label">Featured image (must be under 400 KB):</label>
+					<input type="hidden" name="MAX_FILE_SIZE" value="409600" />
+					<input type="file" name="post_thumbnail" id="post_thumbnail" />
+				</div>
 			</div>
 			<?php endif; ?>
 			
-			<input type="hidden" value="<?php echo $posthasteUrl ?>" name="posthasteUrl" >
+			<input type="hidden" value="<?php echo $posthaste_url ?>" name="posthaste_url" >
 
 			<input id="post-submit" type="submit" value="Create <?php echo strtolower( $post_type_name ) ?>" />
 
-		   
+			 
 		</form>
 		<?php
 		echo '</div> <!-- close posthasteForm -->'."\n";
@@ -442,13 +481,17 @@ function posthasteForm() {
 }
 
 
-// remove action if loop is in sidebar, i.e. recent posts widget
+// remove action if loop is in sidebar, i.e. recent posts widget,
+// and if posthaste is set to load at the start of the loop
 function removePosthasteInSidebar() {
-	remove_action( 'loop_start', posthasteForm );
+	$action = get_option( 'posthaste_action' );
+	// if posthaste is set to load at the start of the loop
+	if ( ! $action || $action == 'loop_start' )
+		remove_action( 'loop_start', posthasteForm );
 }
 
 
-// add css
+// add posthaste's style.css
 function addPosthasteStylesheet() {
 	if ( is_user_logged_in() && posthasteDisplayCheck() && $post_type = posthasteCustomCheck() ) {
 		
@@ -468,68 +511,13 @@ function addPosthasteJs() {
 		global $phVars;
 		
 		wp_enqueue_script(
-			'posthaste',  // script name
+			'posthaste',	 // script name
 			plugins_url( '/posthaste.js', __FILE__ ), // url
 			array( 	'jquery',
 					'suggest' ), // dependencies
 			$phVars['version']
 		);
-		
-		// to include wp-admin/includes/post.php:
-		if ( user_can_richedit() ||
-			 ( get_option('posthaste_feat_image') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) ) {
-			
-			// necessary for wp_tiny_mce() and _wp_post_thumbnail_html() functions:
-			require_once( ABSPATH . '/wp-admin/includes/post.php' );
-			
-		}
-		if ( user_can_richedit() ) {
-		
-			if (function_exists('add_thickbox')) add_thickbox();
-			wp_enqueue_script( 'common' );
-			wp_enqueue_script( 'utils' );
-			wp_enqueue_script( 'post' );
-			wp_enqueue_script( 'media-upload' );
-			wp_enqueue_script( 'jquery-ui-core' );
-			wp_enqueue_script( 'jquery-ui-tabs' );
-			wp_enqueue_script( 'jquery-color' );
-			wp_enqueue_script( 'tiny_mce' );
-			wp_enqueue_script( 'editor' );
-			wp_enqueue_script( 'editor-functions' );
-			
-			// tiny MCE javascript helper function: ?>
-<script>
-	function phMceCustom(ed) {
-		ed.onPostProcess.add(function(ed, o) {
-			o.content = o.content.replace(/(<[^ >]+)[^>]*?( href="[^"]*")?[^>]*?(>)/g, "$1$2$3"); /* strip all attributes */
-		});
-	}
-</script>			
-			
-			<?php
-			// TODO: need to taste editor functionality; does it strip <img />, for example?
-			wp_tiny_mce( true , // true makes the editor "teeny"
-				array(
-					'editor_selector' => 'post_content',
-					'height' => '200px',
-					'theme_advanced_buttons1' => 'bold,italic,underline,|,'/*.'justifyleft,justifycenter,justifyright,justifyfull,'*/.'formatselect,bullist,numlist,|,outdent,indent,|,undo,redo,|,link,unlink',
-					'theme_advanced_buttons2' => '',
-					'theme_advanced_buttons3' => '',
-					'theme_advanced_buttons4' => '',
-					'setup' => 'phMceCustom'
-				)
-			);
-			
-			remove_all_filters( 'mce_external_plugins' );
-		}
-		
-		if ( get_option('posthaste_feat_image') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) {
-			
-			// necessary for get_upload_iframe_src() function:
-			require_once( ABSPATH . '/wp-admin/includes/media.php' );
-			
-		}
-		
+				
 		if ( $post_type == 'auctions' && posthasteProspress()/* necessary for pp_touch_end_time(), which displays auction end dates */ ) {		
 			wp_enqueue_script( 'prospress-post', get_bloginfo( 'wpurl' ) . '/wp-content/plugins/prospress/pp-posts/pp-post-admin.js' );
 			wp_localize_script( 'prospress-post', 'ppPostL10n', array(
@@ -543,6 +531,51 @@ function addPosthasteJs() {
 	}
 }
 
+
+// add rich text editor dependencies and code
+function addPosthasteRichEditor() {
+	if ( user_can_richedit() ) {
+	
+		if (function_exists('add_thickbox')) add_thickbox();
+		wp_enqueue_script( 'common' );
+		wp_enqueue_script( 'utils' );
+		wp_enqueue_script( 'post' );
+		//wp_enqueue_script( 'media-upload' );
+		wp_enqueue_script( 'jquery-ui-core' );
+		wp_enqueue_script( 'jquery-ui-tabs' );
+		wp_enqueue_script( 'jquery-color' );
+		wp_enqueue_script( 'tiny_mce' );
+		wp_enqueue_script( 'editor' );
+		wp_enqueue_script( 'editor-functions' );
+		
+		// tiny MCE javascript helper function: ?>
+<script>
+	function phMceCustom(ed) {
+		ed.onPostProcess.add(function(ed, o) {
+			o.content = o.content.replace(/(<[^ >]+)[^>]*?( href="[^"]*")?[^>]*?(>)/g, "$1$2$3"); /* strip all attributes */
+		});
+	}
+</script>
+		<?php
+		// necessary for wp_tiny_mce()
+		require_once( ABSPATH . '/wp-admin/includes/post.php' );
+		
+		// TODO: need to test editor functionality; does it strip <img />, for example?
+		wp_tiny_mce( true , // true makes the editor "teeny"
+			array(
+				'editor_selector' => 'post_content',
+				'height' => '200px',
+				'theme_advanced_buttons1' => 'bold,italic,underline,|,'/*.'justifyleft,justifycenter,justifyright,justifyfull,formatselect,'*/.'bullist,numlist,|,outdent,indent,|,link,unlink,|,undo,redo',
+				'theme_advanced_buttons2' => '',
+				'theme_advanced_buttons3' => '',
+				'theme_advanced_buttons4' => '',
+				'setup' => 'phMceCustom'
+			)
+		);
+		
+		remove_all_filters( 'mce_external_plugins' );
+	}
+}
 
 // Blatant copying from p2 here
 function posthaste_ajax_tag_search() {
@@ -714,13 +747,23 @@ function posthasteSettingsInit() {
 	
 	// add featured image option
 	add_settings_field(
-		'posthaste_feat_image', 
-		'Featured image (post thumbnail)',
-		'posthasteFeatImageCallback',
+		'posthaste_post_thumbnail', 
+		'Post thumbnail',
+		'posthastePostThumbnailCallback',
 		'writing',
 		'posthaste_settings_section'
 	);
-	register_setting( 'writing','posthaste_feat_image' );
+	register_setting( 'writing','posthaste_post_thumbnail' );
+	
+	// add featured image option
+	add_settings_field(
+		'posthaste_asides', 
+		'“Asides” category slug',
+		'posthasteAsidesCallback',
+		'writing',
+		'posthaste_settings_section'
+	);
+	register_setting( 'writing','posthaste_asides' );
 	
 }
 
@@ -772,18 +815,18 @@ function posthasteDisplayCallback() {
 
 }
 
+// prints the textbox to specify Posthaste hook trigger
 function posthasteActionCallback() {
 	
 	if ( !$action = get_option( 'posthaste_action' ) )
 		$action = 'loop_start';
 	
-	echo "<input name=\"posthaste_action\" id=\"posthaste_action\" value=\"$action\" "
-		. 'class="regular-text code" type="text" cols="25" />';
+	echo '<input name="posthaste_action" id="posthaste_action" value="' .  $action . '" class="code" type="text" />';
 	echo '<span class="description">&nbsp;&nbsp;You can leave this as the default or use it customize both the placement and page type on which the form is displayed. For example, if you specify “ph_display_form” here, you could then add “do_action( \'ph_display_form\' );” wherever you want it displayed in your template.</span>';
 	
 }
 
-// prints the post types and taxonomies lists in Posthaste settings
+// prints the post types list in Posthaste settings
 function posthastePostTypesCallback() {
 
 	$post_types = get_post_types( '', 'objects' );
@@ -916,23 +959,31 @@ function posthasteTaxonomiesCallback() {
 	update_option( 'posthaste_taxonomies', $options );
 }
 
-// prints the checkbox for includng the featured image (post thumbnail) element
-function posthasteFeatImageCallback() {
+// prints the checkbox for includng the post thumbnail element
+function posthastePostThumbnailCallback() {
 	
-	$feat_image = get_option( 'posthaste_feat_image' );
+	$post_thumbnail = get_option( 'posthaste_post_thumbnail' );
 	
-	echo "<fieldset>\n";
-	
-	echo '<input type="checkbox" value="1" name="posthaste_feat_image"'
-		. ( $feat_image ? ' checked="checked"' : '' ) . ' id="posthaste_feat_image">'
-		. "\n" . '<label for="posthaste_feat_image">&nbsp;Include featured image</label>';
-	echo '<span class="description">&nbsp;&nbsp;This option adds a “featured image” element with a media uploader to your form if it is supported by your theme. Your current theme <strong>'
+	echo '<input type="checkbox" value="1" name="posthaste_post_thumbnail"'
+		. ( $post_thumbnail ? ' checked="checked"' : '' ) . ' id="posthaste_post_thumbnail">'
+		. "\n" . '<label for="posthaste_post_thumbnail">&nbsp;Add post thumbnail field</label>';
+	echo '<span class="description">&nbsp;&nbsp;This option adds a post thumbnail element with a file uploader to your form if it is supported by your theme. Your current theme <strong>'
 		. ( current_theme_supports( 'post-thumbnails' ) ? 'does' : 'does not' )
 		. '</strong> support post thumbnails.</span>';
-		
-	echo "\n" . '</fieldset>';
+			
+}
+
+// prints the textbox to specify Posthaste “asides” category
+function posthasteAsidesCallback() {
+	
+	if ( ! $asides_cat = get_option( 'posthaste_asides' ) )
+		$asides_cat = 'asides';
+	
+	echo '<input name="posthaste_asides" id="posthaste_asides" value="' . $asides_cat . '" type="text" />';
+	echo '<span class="description">&nbsp;&nbsp;If this means nothing to you, just ignore it. Here, you can specify the slug of your <a href="http://codex.wordpress.org/Adding_Asides">“asides” category</a>, which the plugin will use automatically as a post’s category if no title or category is specified in the form (and the category exists).</span>';
 	
 }
+
 
 /************
  * ACTIONS 
@@ -950,6 +1001,8 @@ add_action( 'get_sidebar', removePosthasteInSidebar );
 add_action( 'wp_print_styles', addPosthasteStylesheet );
 // add js
 add_action( 'wp_print_scripts', addPosthasteJs );
+// add rich text editor support
+add_action( 'wp_print_scripts', addPosthasteRichEditor );
 // tell wp-admin.php about ajax tags function with wp_ajax_ action
 add_action( 'wp_ajax_posthaste_ajax_tag_search', 'posthaste_ajax_tag_search' );
 // load php vars for js

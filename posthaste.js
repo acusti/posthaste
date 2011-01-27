@@ -32,8 +32,8 @@ jQuery(function($) {
 		});
 		
 		// select visual (tinyMCE) editor, if applicable
-		if (typeof switchEditors != 'undefined') {
-			switchEditors.go('post_content', 'tinymce');
+		if (typeof switchEditors != "undefined") {
+			switchEditors.go("post_content", "tinymce");
 		}
 	
 	});

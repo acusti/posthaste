@@ -28,14 +28,13 @@
 	padding:4px 8px;
 	height:auto;
 }
-#posthaste-form div.rich-edit label { display:none; }
 
 #posthaste-form .title-wrap label,
 #posthaste-form #post_title {
 	display:block;
 	font-size:1.7em;
 	padding:3px 4px;
-	margin:0 0 1em;
+	margin:0;
 	width:90%;
 }
 
@@ -45,7 +44,11 @@
 	width:92%;
 	height:12em;
 }
+
+#posthaste-form .content-wrap { margin:15px 0 0; }
 /* BEGIN - Rich editor: */
+#posthaste-form div.rich-edit label { display:none; }
+
 #posthaste-form .rich-edit { width:93%; }
 #posthaste-form .rich-edit table {
 	margin:0;
@@ -90,19 +93,20 @@
 /* END - Rich editor: */
 
 #posthaste-form .general-fields,
-#posthaste-form .featured-image,
+#posthaste-form .image-fields,
 #posthaste-form .prospress-fields {
 	display:-moz-inline-stack;
 	display:inline-block;
 	vertical-align:top;
 	zoom:1;
 	*display:inline;
-	width:49%;
+	width:48%;
+	margin-right:8px;
 }
 
 /* BEGIN - Auction fields: */
-#posthaste-form .curtime {
-	margin:20px 0 10px;
+#posthaste-form .prospress-fields .curtime {
+	padding:8px 0 8px 8px;
 }
 	#posthaste-form #endtimestampdiv input {
 		font-size:11px;
@@ -118,7 +122,7 @@
 		border:1px solid #bbb;
 		-moz-border-radius:4px; -webkit-border-radius:4px; border-radius:4px;
 		padding:3px 6px;
-		margin-left:7px;
+		margin-left:5px;
 	}
 	
 	#posthaste-form .prospress-fields #start_price {
@@ -131,15 +135,18 @@
 #posthaste-form .cats-wrap,
 #posthaste-form .status-wrap,*/
 #posthaste-form .field-wrap {
-	margin:20px 0 0;
-	padding-right:15px;
+	border:1px solid #ccc;
+	-moz-border-radius:6px; -khtml-border-radius:6px; -webkit-border-radius:6px; border-radius:6px;
+	margin:15px 0 0 0;
+	padding:6px 0 6px 8px;
 }
 #posthaste-form .taxonomy-label,
 #posthaste-form .tags-label,
 #posthaste-form .cats-label,
 #posthaste-form .taxonomy-select,
 #posthaste-form #tags_input,
-#posthaste-form #start_price {
+#posthaste-form #start_price,
+#posthaste-form #post_thumbnail {
 	display:-moz-inline-stack;
 	display:inline-block;
 	vertical-align:baseline;
@@ -149,6 +156,9 @@
 }
 #posthaste-form #tags_input {
 	width:200px;
+}
+#posthaste-form #post_thumbnail {
+	margin-top:10px;
 }
 
 #posthaste-form .status-wrap label { display:inline; }
