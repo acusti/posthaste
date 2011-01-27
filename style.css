@@ -1,31 +1,110 @@
-/* 
- * posthasteForm stylesheet
- */
-div#posthasteForm {
-    width: 100%;
-    height: 100%;
-    margin: 1em 0;
-    padding: 10px;
+/* Posthaste stylesheet */
+
+#posthaste-form {
+    margin:1em 0;
+    padding:10px;
+    width:100%;
 }
-div#posthasteForm #posthasteIntro {padding: 1em 0; margin: 0 0 0.5em; overflow: hidden;}
-div#posthasteForm #posthasteIntro img.avatar {margin: 0; padding: 0 8px 0 0;}
-div#posthasteForm #posthasteIntro b {font-size: 1.3em; margin-right: 7px;}
+#posthaste-form #posthaste-intro {padding: 1em 0; margin: 0 0 0.5em; overflow: hidden;}
+#posthaste-form #posthaste-intro img.avatar {margin: 0; padding: 0 8px 0 0;}
+#posthaste-form #posthaste-intro b {font-size: 1.3em; margin-right: 7px;}
+#posthaste-form textarea,
+#posthaste-form label { display:block; line-height:1.2em; }
 
-div#posthasteForm input#postTitle {display: block; width: 90%;}
+#posthaste-form textarea,
+#posthaste-form label,
+#posthaste-form option,
+#posthaste-form input { font-size:14px; }
 
-div#posthasteForm textarea {display: block;}
-div#posthasteForm textarea#postText {width: 91%; height: 8em;}
+#posthaste-form .title-wrap,
+#posthaste-form .content-wrap { position:relative; }
 
-div#posthasteForm label {display: block;}
-div#posthasteForm label#tagsLabel {display: inline;}
-div#posthasteForm label#cats {padding-left: 5px; display: inline;}
+#posthaste-form div.title-wrap label,
+#posthaste-form div.content-wrap label {
+	position:absolute;
+	color:#bbb;
+	cursor:text;
+	padding:4px 8px;
+	height:auto;
+}
+#posthaste-form div.rich-edit label { display:none; }
 
-div#posthasteForm label#postStatusLabel {display: inline;}
-div#posthasteForm input#postStatus {margin-left: 5px;}
+#posthaste-form .title-wrap label,
+#posthaste-form #post-title {
+	display:block;
+	font-size:1.7em;
+	padding:3px 4px;
+	margin:0 0 1em;
+	width:90%;
+}
 
-div#posthasteForm input#submit {margin-left: 15px; }
+#posthaste-form .content-wrap label,
+#posthaste-form #post-content {
+	padding:3px 4px;
+	width:92%;
+	height:12em;
+}
+/* Rich editor: */
+#posthaste-form .rich-edit { width:93%; }
+#posthaste-form .rich-edit table {
+	margin:0;
+}
+#posthaste-form #editor-toolbar { display:none; }
+#post-content_tbl tr.mceFirst,
+#post-content_tbl .mceIframeContainer {
+	background-color:#e4e4e4;
+}
+#post-content_tbl tr.mceLast {
+	background-color:#ededed;
+}
+	#post-content_tbl .mceToolbar .mceButtonEnabled {
+		background-color:#f4f4f4;
+	}
+	#post-content_tbl .mceToolbar .mceButtonActive {
+		background-color:#ccc;
+	}
+#posthaste-form #post-content_tbl td {
+	padding:3px 2px;
+}
+	#posthaste-form #post-content_tbl td td {
+		padding:0 2px;
+	}
 
-div#posthasteDraftNotice {font-weight: bold; text-align: center; padding: 5px;}
+#posthaste-form .taxonomy-label,
+#posthaste-form .tags-label,
+#posthaste-form .cats-label {
+	clear:left;
+	float:left;
+	margin:20px 15px 0 0;
+}
+#posthaste-form .taxonomy-select {
+	float:left;
+	margin:20px 15px 0 0;
+	font-size:20px;/* this seems necessary in safari to achieve visual display of 13px; check in other browsers */
+}
+#posthaste-form #tags {
+	float:left;
+	width:200px;
+	margin:17px 15px 0 0;
+}
+
+#posthaste-form label#postStatusLabel {display: inline;}
+#posthaste-form input#postStatus {margin-left: 5px;}
+
+#posthaste-form input#post-submit {
+	display:block;
+	float:right;
+	margin:17px 80px 40px 0;
+}
+
+div.posthaste-notice {
+	font-weight:bold;
+	text-align:center;
+	border:1px solid #888;
+	padding:13px 20px;
+	margin:1em auto;
+	width:80%;
+}
 
 .ac_results {
     margin: 0;
