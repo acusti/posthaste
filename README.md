@@ -1,6 +1,6 @@
 # Posthaste: _create content from the frontend_
 
-Allows you to create posts (of any built-in or custom post type) from the frontend in any theme. Features include support for custom taxonomies and post thumbnails, flexibility of placement, and a rich text editor,
+Allows you to create posts (of any built-in or custom post type) from the frontend in any theme. Features include support for custom taxonomies and post thumbnails, flexibility of placement, and a rich text editor.
 
 ## Description
 
