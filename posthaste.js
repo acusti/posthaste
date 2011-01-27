@@ -1,5 +1,5 @@
 jQuery(function($) {
-	jQuery("div#posthaste-form input#tags").suggest(
+	jQuery("div#posthaste-form input#tags_input").suggest(
 		phAjaxUrl + "?action=posthaste_ajax_tag_search", 
 		{ delay: 350, minchars: 2, multiple: true, multipleSep: ", " } 
 	);
@@ -19,6 +19,10 @@ jQuery(function($) {
 	// On document ready actions:
 	jQuery(document).ready(function() {
 		
+		jQuery.each(["#post_title", "#post_content"], function(i, id){
+			if (jQuery(id).val().length > 0)
+				jQuery("label[for='"+jQuery(id).attr("name")+"']").css("visibility", "hidden");
+		}); 
 		// show/hide labels for title input and content textarea
 		jQuery("#post_title, #post_content").focus(function(e) {
 			jQuery("label[for='"+jQuery(this).attr("name")+"']").css("visibility", "hidden");

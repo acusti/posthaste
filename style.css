@@ -5,16 +5,17 @@
     padding:10px;
     width:100%;
 }
-#posthaste-form #posthaste-intro {padding: 1em 0; margin: 0 0 0.5em; overflow: hidden;}
-#posthaste-form #posthaste-intro img.avatar {margin: 0; padding: 0 8px 0 0;}
-#posthaste-form #posthaste-intro b {font-size: 1.3em; margin-right: 7px;}
+#posthaste-form #posthaste-intro { padding:1em 0; margin:0 0 0.5em; overflow:hidden; }
+#posthaste-form #posthaste-intro img.avatar { margin:0; padding:0 8px 0 0; }
+#posthaste-form #posthaste-intro b { font-size:1.3em; margin-right:7px; }
 #posthaste-form textarea,
 #posthaste-form label { display:block; line-height:1.2em; }
 
 #posthaste-form textarea,
 #posthaste-form label,
 #posthaste-form option,
-#posthaste-form input { font-size:14px; }
+#posthaste-form input,
+#posthaste-form .taxonomy-select { font-size:12px; }
 
 #posthaste-form .title-wrap,
 #posthaste-form .content-wrap { position:relative; }
@@ -80,57 +81,82 @@
 	#post_content_tbl .mceToolbar .mceButtonActive {
 		background-color:#ccc;
 	}
+	.mceListBoxMenu {
+		background-color:#f8f8f8;
+	}
+	.mceListBoxMenu a:hover {
+		background-color:#e4e4e4;
+	}
 /* END - Rich editor: */
 
-/* BEGIN - Auction fields: */
+#posthaste-form .general-fields,
+#posthaste-form .featured-image,
 #posthaste-form .prospress-fields {
-	float:right;
-	margin-top:-55px;
-	width:50%;
+	display:-moz-inline-stack;
+	display:inline-block;
+	vertical-align:top;
+	zoom:1;
+	*display:inline;
+	width:49%;
 }
-	#posthaste-form .curtime { }
-		#posthaste-form #endtimestampdiv input {
-			font-size:11px;
-		}
-		
-		#posthaste-form .prospress-fields .price-label {
-			float:left;
-			margin:20px 15px 0px 0px;
-		}
-		#posthaste-form .prospress-fields #start-price {
-			float:left;
-			margin:17px 15px 0px 0px;
-			width:75px;
-		}
+
+/* BEGIN - Auction fields: */
+#posthaste-form .curtime {
+	margin:20px 0 10px;
+}
+	#posthaste-form #endtimestampdiv input {
+		font-size:11px;
+	}
+	#posthaste-form .edit-endtimestamp {
+		display:-moz-inline-stack;
+		display:inline-block;
+		vertical-align:baseline;
+		zoom:1;
+		*display:inline;
+		font-size:11px;
+		background-color:#f2f2f2;
+		border:1px solid #bbb;
+		-moz-border-radius:4px; -webkit-border-radius:4px; border-radius:4px;
+		padding:3px 6px;
+		margin-left:7px;
+	}
 	
+	#posthaste-form .prospress-fields #start_price {
+		width:75px;
+	}
 
-/* END - Auction fields: */
+/* END - Auction fields */
 
+/*#posthaste-form .tags-wrap,
+#posthaste-form .cats-wrap,
+#posthaste-form .status-wrap,*/
+#posthaste-form .field-wrap {
+	margin:20px 0 0;
+	padding-right:15px;
+}
 #posthaste-form .taxonomy-label,
 #posthaste-form .tags-label,
-#posthaste-form .cats-label {
-	clear:left;
-	float:left;
-	margin:20px 15px 0 0;
-}
-#posthaste-form .taxonomy-select {
-	float:left;
-	margin:20px 15px 0 0;
-	font-size:20px;/* this seems necessary in safari to achieve visual display of 13px; check in other browsers */
+#posthaste-form .cats-label,
+#posthaste-form .taxonomy-select,
+#posthaste-form #tags_input,
+#posthaste-form #start_price {
+	display:-moz-inline-stack;
+	display:inline-block;
+	vertical-align:baseline;
+	zoom:1;
+	*display:inline;
+	margin-right:5px;
 }
 #posthaste-form #tags_input {
-	float:left;
 	width:200px;
-	margin:17px 15px 0 0;
 }
 
-#posthaste-form .status-wrap label {display: inline;}
-#posthaste-form input#post_status {margin-left: 5px;}
+#posthaste-form .status-wrap label { display:inline; }
+#posthaste-form input#post_status { margin-left:5px; }
 
 #posthaste-form input#post-submit {
 	display:block;
-	float:right;
-	margin:17px 80px 40px 500px;
+	margin:17px auto;
 }
 
 div.posthaste-notice {

@@ -189,101 +189,11 @@ function posthasteHeader() {
 		// booyah (wp_insert_post() does sanitizing, prepping of variables, everything!):
 		$post_id = wp_insert_post( $_POST );
 		
-		// for the record, this is what the new system is replacing (will be removed in next commit):
-		/*
-$postarr = wp_parse_args( $_POST, $defaults );
-		$postarr = sanitize_post( $postarr, 'db' );
-		
-		// export array as variables
-		extract( $postarr, EXTR_SKIP );
-		
-		// some special post title logic:
-		$post_title = trim ( strip_tags( $post_title ) );
-		if ( empty( $post_title ) ) {
-			// title is required, so we will trim content for title 
-			// & add to asides category if it exists (unless another
-			// category was explicitly chosen in form)
-			$post_title = strip_tags( $post_content );	   
-			if( strlen( $post_title ) > 40 ) {
-				$post_title = substr( $post_title, 0, 40 ) . ' … ';
-			}	 
-			// if "asides" category exists & title is empty, add to asides:
-			if ( $asidesCatID = get_cat_id( $phVars['asidesCatName'] ) ) {
-				$post_category = array( $asidesCatID ); 
-			}
-		}
-
-		$the_post = array();
-
-		$the_post['post_author'] = $current_user->user_id;
-		$the_post['post_content'] = $post_content;
-		$the_post['post_title'] = $post_title;
-		$the_post['post_type'] = $post_type;
-		
-		// set post_status 
-		if ( $post_status == 'draft' ) {
-			$the_post['post_status'] = 'draft';
-		} else {
-			$the_post['post_status'] = 'publish';
-		}
-
-		// create the post
-		$post_id = wp_insert_post( $the_post );
-		// note: you can close the comments or open the comments by setting the value for 'comment_status' key
-
-		// now, the terms / taxonomies
-		// for these, check only for $_POST variables specified in posthaste settings
-		$fields = get_option( 'posthaste_fields' );
-		$taxonomies = get_option( 'posthaste_taxonomies' );
-		
-		if ( $fields['categories'] && isset($post_category) && is_object_in_taxonomy($post_type, 'category') ) {
-			wp_set_post_categories( $post_id, $post_category );
-			//wp_set_post_terms( $post_id, $post_category, 'category', true );
-		}
-		
-		if ( $fields['tags'] && isset($tags_input) && is_object_in_taxonomy($post_type, 'post_tag') ) {
-			// TODO: add serious clean up, syntax validation, etc. here
-			//	can either turn the tags into an array or a comma separated string
-			wp_set_post_tags( $post_id, $tags_input );
-			//wp_set_post_terms( $post_id, $tags, 'post_tag', true );
-		}
-		
-		if ( !empty($tax_input) ) {
-			echo "<pre>";
-			print_r($tax_input);
-			echo "</pre>";
-			foreach ( $tax_input as $taxonomy => $tags ) {
-				$taxonomy_obj = get_taxonomy($taxonomy);
-				if ( is_array($tags) ) // array = hierarchical, string = non-hierarchical.
-					$tags = array_filter($tags);
-				if ( current_user_can($taxonomy_obj->cap->assign_terms) )
-					wp_set_post_terms( $post_ID, $tags, $taxonomy );
-			}
-		}
-*/
-/*
-		if ( count( $taxonomies ) > 1 ) { // there will always be one for the hidden value
-			
-			$taxonomy_obj = get_taxonomy($taxonomy);
-			if ( is_array($tags) ) // array = hierarchical, string = non-hierarchical.
-				$tags = array_filter($tags);
-			if ( current_user_can($taxonomy_obj->cap->assign_terms) )
-				wp_set_post_terms( $post_ID, $tags, $taxonomy );
-				
-			
-			foreach ( $taxonomies as $name => $value ) {
-				$taxonomy = $_POST['tax_input['.$name.']'];
-				if ( $taxonomy ) {
-					wp_set_post_terms( $post_id, $taxonomy, $name, true );
-				}
-			}
-		}
-*/
 		// include auction specific logic, if appropriate
 		if ( $_POST['post_type'] == 'auctions' && posthasteProspress() ) {
 
 			// start_price (digits and '.' only)
-			$start_price = preg_replace( '/[^\d.]/', '', $_POST['start-price'] );
+			$start_price = preg_replace( '/[^\d.]/', '', $_POST['start_price'] );
 			$start_price = number_format( $start_price, 2, '.', '' );
 			update_post_meta( $post_id, 'start_price', $start_price );
 			
@@ -409,75 +319,77 @@ function posthasteForm() {
 				<textarea name="post_content" id="post_content" class="post_content"></textarea>
 			<?php endif; ?>
 			</div>
-
-			<?php if ( $fields['tags'] ) : ?>
-			<div class="tags-wrap"><label for="tags_input" class="tags-label">Tags:</label>
-			<input type="text" name="tags_input" id="tags_input" value="<?php echo posthasteTagCheck(); ?>" autocomplete="off" />
+			
+			<div class="general-fields">
+				<?php if ( $fields['tags'] ) : ?>
+				<div class="field-wrap tags-wrap"><label for="tags_input" class="tags-label">Tags:</label>
+				<input type="text" name="tags_input" id="tags_input" value="<?php echo posthasteTagCheck(); ?>" autocomplete="off" />
+				</div>
+				<?php else :
+					$tagselect = posthasteTagCheck();
+					echo '<input type="hidden" value="'
+						  .$tagselect.'" name="tags_input" id="tags_input">';
+				endif; ?>
+				
+				<?php if ( $fields['categories'] ) : ?>
+				<div class="field-wrap cats-wrap"></div><label for="post_category" class="cats-label">Category:</label>
+				<?php
+					$catselect = posthasteCatCheck();
+					wp_dropdown_categories( array(
+						'hide_empty' => 0,
+						'name' => 'post_category',
+						'orderby' => 'name',
+						'class' => 'taxonomy-select',
+						'hierarchical' => 1,
+						'selected' => $catselect/*,
+						'tab_index' => 4*/
+						)
+					); ?>
+				</div>
+				<?php elseif ( count( $taxonomies ) <= 1 ) : // only use a default category if no custom taxonomies will be used
+					$catselect = posthasteCatCheck(); ?>
+				<input type="hidden" value="<?php echo $catselect ?>" name="post_category" id="post_category">
+				
+				<?php endif; ?>
+	
+				<?php if ( $fields['draft'] ) : ?>
+				<div class="field-wrap status-wrap"><input type="checkbox" name="post_status" value="draft" id="post_status">
+				<label for="post_status">Draft</label></div>
+				<?php else : ?>
+				<input type="hidden" name="post_status" value="publish">
+				<?php endif; ?>
+				
+				<?php if ( count( $taxonomies ) > 1 ) : // there will always be one for the hidden value
+				$taxs_obj = get_taxonomies( '', 'object' );
+					foreach ( $taxonomies as $name => $value ) :
+						$taxonomy = $taxs_obj[$name];
+						if ( !$taxonomy ) continue;
+						$display_tax = is_object_in_taxonomy( $post_type, $name );
+	/*					foreach ( $taxonomy->object_type as $obj_type ) {
+							if ( $post_type == $obj_type ) { // the taxonomy applies to the current post type
+								$display_tax = true;
+								break;
+							}
+						} */
+						if ( $display_tax ) : ?>
+				
+				<div class="field-wrap <?php echo $taxonomy->name ?>-wrap"><label for="tax_input[<?php echo $taxonomy->name ?>]" class="taxonomy-label"><?php echo $taxonomy->labels->singular_label ?>:</label>
+				<?php
+					wp_dropdown_categories( array(
+						'hide_empty' => 0,
+						'name' => 'tax_input['.$taxonomy->name.']',
+						'orderby' => 'name',
+						'class' => 'taxonomy-select',
+						'hierarchical' => 1,
+						'taxonomy' => $taxonomy->name,
+						'hide_if_empty' => 1
+						)
+					); ?>
+				</div>
+					<?php endif;
+					endforeach;
+				endif; ?>
 			</div>
-			<?php else :
-				$tagselect = posthasteTagCheck();
-				echo '<input type="hidden" value="'
-					  .$tagselect.'" name="tags_input" id="tags_input">';
-			endif; ?>
-			
-			<?php if ( $fields['categories'] ) : ?>
-			<div class="cats-wrap"></div><label for="post_category" class="cats-label">Category:</label>
-			<?php
-				$catselect = posthasteCatCheck();
-				wp_dropdown_categories( array(
-					'hide_empty' => 0,
-					'name' => 'post_category',
-					'orderby' => 'name',
-					'class' => 'taxonomy-select',
-					'hierarchical' => 1,
-					'selected' => $catselect/*,
-					'tab_index' => 4*/
-					)
-				); ?>
-			</div>
-			<?php elseif ( count( $taxonomies ) <= 1 ) : // only use a default category if no custom taxonomies will be used
-				$catselect = posthasteCatCheck(); ?>
-			<input type="hidden" value="<?php echo $catselect ?>" name="post_category" id="post_category">
-			
-			<?php endif; ?>
-
-			<?php if ( $fields['draft'] ) : ?>
-			<div class="status-wrap"><input type="checkbox" name="post_status" value="draft" id="post_status">
-			<label for="post_status">Draft</label></div>
-			<?php else : ?>
-			<input type="hidden" name="post_status" value="publish">
-			<?php endif; ?>
-			
-			<?php if ( count( $taxonomies ) > 1 ) : // there will always be one for the hidden value
-			$taxs_obj = get_taxonomies( '', 'object' );
-				foreach ( $taxonomies as $name => $value ) :
-					$taxonomy = $taxs_obj[$name];
-					if ( !$taxonomy ) continue;
-					$display_tax = is_object_in_taxonomy( $post_type, $name );
-/*					foreach ( $taxonomy->object_type as $obj_type ) {
-						if ( $post_type == $obj_type ) { // the taxonomy applies to the current post type
-							$display_tax = true;
-							break;
-						}
-					} */
-					if ( $display_tax ) : ?>
-			
-			<div class="<?php echo $taxonomy->name ?>-wrap"><label for="tax_input[<?php echo $taxonomy->name ?>]" class="taxonomy-label"><?php echo $taxonomy->labels->singular_label ?>:</label>
-			<?php
-				wp_dropdown_categories( array(
-					'hide_empty' => 0,
-					'name' => 'tax_input['.$taxonomy->name.']',
-					'orderby' => 'name',
-					'class' => 'taxonomy-select',
-					'hierarchical' => 1,
-					'taxonomy' => $taxonomy->name,
-					'hide_if_empty' => 1
-					)
-				); ?>
-			</div>
-				<?php endif;
-				endforeach;
-			endif; ?>
 			
 			<?php if ( $post_type == 'auctions' ) : // include auction specific elements
 			
@@ -487,7 +399,7 @@ function posthasteForm() {
 			$end_stamp = __('End on: <b>%1$s</b>', 'prospress' );
 	?>
 			<div class="prospress-fields">
-				<div class="misc-pub-section curtime misc-pub-section-last">
+				<div class="field-wrap curtime">
 					<span id="endtimestamp">
 					<?php printf( $end_stamp, $end_date); ?></span>
 					<a href="#edit_endtimestamp" class="edit-endtimestamp hide-if-no-js" tabindex='4'><?php ('completed' != $post->post_status) ? _e('Edit', 'prospress' ) : _e('Extend', 'prospress' ); ?></a>
@@ -495,12 +407,27 @@ function posthasteForm() {
 						<?php pp_touch_end_time( ( $action == 'edit' ), 5 ); ?>
 					</div>
 				</div>
-				<div class="price-wrap">
-					<label for="start-price" class="price-label">Start price:</label>
-					<input type="text" name="start-price" id="start-price" value="1.00" autocomplete="off" />
+				<div class="field-wrap price-wrap">
+					<label for="start_price" class="taxonomy-label price-label">Start price:</label>
+					<input type="text" name="start_price" id="start_price" value="1.00" autocomplete="off" />
 				</div>
 			</div>
 			
+			<?php endif; ?>
+
+			<?php if ( get_option('posthaste_feat_image') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) : ?>
+			<div class="featured-image">
+			<?php 
+			global $post;
+			$thumbnail_id = get_post_meta( $post->ID, '_thumbnail_id', true );
+			$feat_image_html = _wp_post_thumbnail_html( $thumbnail_id );
+			
+			$feat_image_html = str_replace('media-upload.php', 'wp-admin/media-upload.php', $feat_image_html);
+			
+			echo $feat_image_html;
+			
+			//add_meta_box('postimagediv', __('Featured Image'), 'post_thumbnail_meta_box', $post_type, 'side', 'low'); ?>
+			</div>
 			<?php endif; ?>
 			
 			<input type="hidden" value="<?php echo $posthasteUrl ?>" name="posthasteUrl" >
@@ -547,8 +474,18 @@ function addPosthasteJs() {
 					'suggest' ), // dependencies
 			$phVars['version']
 		);
-		//if (function_exists('add_thickbox')) add_thickbox();
+		
+		// to include wp-admin/includes/post.php:
+		if ( user_can_richedit() ||
+			 ( get_option('posthaste_feat_image') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) ) {
+			
+			// necessary for wp_tiny_mce() and _wp_post_thumbnail_html() functions:
+			require_once( ABSPATH . '/wp-admin/includes/post.php' );
+			
+		}
 		if ( user_can_richedit() ) {
+		
+			if (function_exists('add_thickbox')) add_thickbox();
 			wp_enqueue_script( 'common' );
 			wp_enqueue_script( 'utils' );
 			wp_enqueue_script( 'post' );
@@ -560,23 +497,40 @@ function addPosthasteJs() {
 			wp_enqueue_script( 'editor' );
 			wp_enqueue_script( 'editor-functions' );
 			
-			// necessary for wp_tiny_mce() function:
-			require_once( ABSPATH . '/wp-admin/includes/post.php' );
+			// tiny MCE javascript helper function: ?>
+<script>
+	function phMceCustom(ed) {
+		ed.onPostProcess.add(function(ed, o) {
+			o.content = o.content.replace(/(<[^ >]+)[^>]*?( href="[^"]*")?[^>]*?(>)/g, "$1$2$3"); /* strip all attributes */
+		});
+	}
+</script>			
 			
+			<?php
 			// TODO: need to taste editor functionality; does it strip <img />, for example?
-			//	also, need to figure out how to remove the buttons that get stripped (like strikethrough)
 			wp_tiny_mce( true , // true makes the editor "teeny"
 				array(
 					'editor_selector' => 'post_content',
-					'height' => '200px'
+					'height' => '200px',
+					'theme_advanced_buttons1' => 'bold,italic,underline,|,'/*.'justifyleft,justifycenter,justifyright,justifyfull,'*/.'formatselect,bullist,numlist,|,outdent,indent,|,undo,redo,|,link,unlink',
+					'theme_advanced_buttons2' => '',
+					'theme_advanced_buttons3' => '',
+					'theme_advanced_buttons4' => '',
+					'setup' => 'phMceCustom'
 				)
 			);
 			
 			remove_all_filters( 'mce_external_plugins' );
 		}
 		
-		if ( $post_type == 'auctions' && posthasteProspress()/* necessary for pp_touch_end_time(), which displays auction end dates */ ) {
+		if ( get_option('posthaste_feat_image') && current_theme_supports('post-thumbnails', $post_type) && post_type_supports($post_type, 'thumbnail') && ! is_multisite() ) {
 			
+			// necessary for get_upload_iframe_src() function:
+			require_once( ABSPATH . '/wp-admin/includes/media.php' );
+			
+		}
+		
+		if ( $post_type == 'auctions' && posthasteProspress()/* necessary for pp_touch_end_time(), which displays auction end dates */ ) {		
 			wp_enqueue_script( 'prospress-post', get_bloginfo( 'wpurl' ) . '/wp-content/plugins/prospress/pp-posts/pp-post-admin.js' );
 			wp_localize_script( 'prospress-post', 'ppPostL10n', array(
 				'endedOn' => __( 'Ended on:', 'prospress' ),
@@ -625,7 +579,7 @@ function posthaste_jsvars() {
  * SETTINGS
  *
  * Modifiable in: Settings -> Writing -> Posthaste Settings
- *
+
  */
 
 /**
@@ -671,7 +625,7 @@ function posthasteAddDefaultFields() {
 	add_option( 'posthaste_fields', $options, '', 'yes' );
 }
 
-// add default fields to db if db is empty
+// add default taxonomies to db if db is empty
 function posthasteAddDefaultTaxonomies() {
 	
 	// fields that are on by default:
@@ -758,6 +712,16 @@ function posthasteSettingsInit() {
 	);
 	register_setting( 'writing','posthaste_taxonomies' );
 	
+	// add featured image option
+	add_settings_field(
+		'posthaste_feat_image', 
+		'Featured image (post thumbnail)',
+		'posthasteFeatImageCallback',
+		'writing',
+		'posthaste_settings_section'
+	);
+	register_setting( 'writing','posthaste_feat_image' );
+	
 }
 
 // prints the section description in Posthaste settings
@@ -815,7 +779,7 @@ function posthasteActionCallback() {
 	
 	echo "<input name=\"posthaste_action\" id=\"posthaste_action\" value=\"$action\" "
 		. 'class="regular-text code" type="text" cols="25" />';
-	echo '<span class="description">You can leave this as the default or use it customize both the placement and page type on which the form is displayed. For example, if you specify “ph_display_form” here, you could then add “do_action( \'ph_display_form\' );” wherever you want it displayed in your template.</span>';
+	echo '<span class="description">&nbsp;&nbsp;You can leave this as the default or use it customize both the placement and page type on which the form is displayed. For example, if you specify “ph_display_form” here, you could then add “do_action( \'ph_display_form\' );” wherever you want it displayed in your template.</span>';
 	
 }
 
@@ -855,8 +819,8 @@ function posthastePostTypesCallback() {
 	
 	// add a reset option input (to make it possible to load new post types):
 	echo '<input type="checkbox" value="1" name="posthaste_post_types[reset]" '
-		 . 'id="posthaste_post_types[hidden]">'
-		 . "\n" . '<label for="posthaste_post_types[hidden]">&nbsp;<b>Reset this list</b>'
+		 . 'id="posthaste_post_types[reset]">'
+		 . "\n" . '<label for="posthaste_post_types[reset]">&nbsp;<b>Reset this list</b>'
 		 . ' (use this if the post types list seems out of date)</label>';
 	
 	// add the hidden value too (stupid hack so "all off" will work, probably a better way)
@@ -880,7 +844,7 @@ function posthasteFieldsCallback() {
 	if ( !$options = get_option( 'posthaste_fields' ) ) { 
 		posthasteAddDefaultFields(); 
 		$options = get_option( 'posthaste_fields' );
-	} 
+	}
 
 	if ( !empty( $options ) ) {
 		$options = get_option( 'posthaste_fields' );
@@ -936,20 +900,38 @@ function posthasteTaxonomiesCallback() {
 	
 	// add a reset option input (to make it possible to load new post types):
 	echo '<input type="checkbox" value="1" name="posthaste_taxonomies[reset]" '
-		 . 'id="posthaste_taxonomies[hidden]">'
-		 . "\n" . '<label for="posthaste_taxonomies[hidden]">&nbsp;<b>Reset this list</b>'
-		 . ' (use this if a custom taxonomy didn’t show up in this list)</label>';		
+		 . 'id="posthaste_taxonomies[reset]">'
+		 . "\n" . '<label for="posthaste_taxonomies[reset]">&nbsp;<b>Reset this list</b>'
+		 . ' (use this if a custom taxonomy didn’t show up in this list)</label>';
 	
 	// add the hidden value too (stupid hack so "all off" will work, probably a better way)
 	$options['hidden'] = 1;
 	
 	// …and output it
 	echo "\n" . '<input type="hidden" value="1" '
-		 .'name="posthaste_taxonomies[hidden]" id="posthaste_taxonomies[hidden]">';
+		.'name="posthaste_taxonomies[hidden]" id="posthaste_taxonomies[hidden]">';
 	echo "\n" . '</fieldset>';
 
 	// now add options to the db; update_option() adds options if they don’t exist or updates them if they do
 	update_option( 'posthaste_taxonomies', $options );
+}
+
+// prints the checkbox for includng the featured image (post thumbnail) element
+function posthasteFeatImageCallback() {
+	
+	$feat_image = get_option( 'posthaste_feat_image' );
+	
+	echo "<fieldset>\n";
+	
+	echo '<input type="checkbox" value="1" name="posthaste_feat_image"'
+		. ( $feat_image ? ' checked="checked"' : '' ) . ' id="posthaste_feat_image">'
+		. "\n" . '<label for="posthaste_feat_image">&nbsp;Include featured image</label>';
+	echo '<span class="description">&nbsp;&nbsp;This option adds a “featured image” element with a media uploader to your form if it is supported by your theme. Your current theme <strong>'
+		. ( current_theme_supports( 'post-thumbnails' ) ? 'does' : 'does not' )
+		. '</strong> support post thumbnails.</span>';
+		
+	echo "\n" . '</fieldset>';
+	
 }
 
 /************
