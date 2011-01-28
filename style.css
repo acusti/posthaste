@@ -46,7 +46,8 @@
 }
 
 #posthaste-form .content-wrap { margin:15px 0 0; }
-/* BEGIN - Rich editor: */
+
+/* BEGIN - Rich editor */
 #posthaste-form div.rich-edit label { display:none; }
 
 #posthaste-form .rich-edit { width:93%; }
@@ -90,7 +91,7 @@
 	.mceListBoxMenu a:hover {
 		background-color:#e4e4e4;
 	}
-/* END - Rich editor: */
+/* END - Rich editor */
 
 #posthaste-form .general-fields,
 #posthaste-form .image-fields,
@@ -104,7 +105,7 @@
 	margin-right:8px;
 }
 
-/* BEGIN - Auction fields: */
+/* BEGIN - Auction fields */
 #posthaste-form .prospress-fields .curtime {
 	padding:8px 0 8px 8px;
 }
@@ -124,16 +125,16 @@
 		padding:3px 6px;
 		margin-left:5px;
 	}
-	
-	#posthaste-form .prospress-fields #start_price {
-		width:75px;
+	#posthaste-form .prospress-fields .price-label {
+		margin-right:0px;
+	}
+	#posthaste-form .prospress-fields #start_price,
+	#posthaste-form .prospress-fields #buy_now_price {
+		width:65px;
 	}
 
 /* END - Auction fields */
 
-/*#posthaste-form .tags-wrap,
-#posthaste-form .cats-wrap,
-#posthaste-form .status-wrap,*/
 #posthaste-form .field-wrap {
 	border:1px solid #ccc;
 	-moz-border-radius:6px; -khtml-border-radius:6px; -webkit-border-radius:6px; border-radius:6px;
@@ -146,6 +147,7 @@
 #posthaste-form .taxonomy-select,
 #posthaste-form #tags_input,
 #posthaste-form #start_price,
+#posthaste-form #buy_now_price,
 #posthaste-form #post_thumbnail {
 	display:-moz-inline-stack;
 	display:inline-block;
@@ -180,6 +182,7 @@ div.posthaste-notice {
 	width:80%;
 }
 
+/* BEGIN - Tags suggest box */
 .ac_results {
     margin: 0;
     padding: 0;
@@ -205,3 +208,4 @@ div.posthaste-notice {
 .ac_match {    
     text-decoration: underline;
 }
+/* END - Tags suggest box */

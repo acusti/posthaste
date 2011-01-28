@@ -1,11 +1,10 @@
 === Posthaste ===
 Contributors: smajda, acustica
 Author URI: http://jon.smajda.com
-Author URI: http://www.acusti.ca
 Plugin URI: http://wordpress.org/extend/plugins/posthaste/
 Tags: post, frontend, custom post type, asides
 Requires at least: 2.7
-Tested up to: 3.
+Tested up to: 3.0.4
 Stable tag: 2.0.0
 
 Allows you to create posts (of any built-in or custom post type) from the frontend in any theme. Features include support for custom taxonomies and post thumbnails, flexibility of placement, and a rich text editor,

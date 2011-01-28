@@ -9,8 +9,8 @@ Description: Adds a post box (originally from the Prologue theme, then modified 
 * improving admin settings: put post types and taxonomy selects in two columns (can use -moz-column-count:2; -webkit-columns:2; -moz-column-gap:30px; -webkit-column-gap:30px;)
 * separate frontend and backend functionality into 2 different files
 Version: 2.0.0
-Author: Andrew Patton
-Author URI: http://www.acusti.ca
+Author: Jon Smajda / Andrew Patton
+Author URI: http://jon.smajda.com
 License: GPL
 */
 
@@ -43,7 +43,7 @@ License: GPL
 /***********
  * VARIABLES 
  ***********/
-$phVars = array(
+$ph_vars = array(
 		'post_array' => '', // store values of a post in case of error to repopulate form
 		'version' => '2.0.0',
 		'prospress' => false
@@ -56,7 +56,7 @@ $phVars = array(
  ************/
 
 // When to display form
-function posthasteDisplayCheck() {
+function ph_display_check() {
 	
 	if ( !is_admin() ) {
 		if ( !$display = get_option( 'posthaste_display' ))
@@ -89,7 +89,7 @@ function posthasteDisplayCheck() {
 }
 
 // Check capabilities and post type
-function posthasteCustomCheck() {
+function ph_custom_check() {
 
 	// TODO: figure out all this 'where to display' logic;
 	// for now, we'll just show it on a user's profile page
@@ -98,35 +98,37 @@ function posthasteCustomCheck() {
 	
 	// get post types (if empty, fill in defaults & then get them)
 	if ( ! $options = get_option( 'posthaste_post_types' ) ) {
-		posthasteAddDefaultPostTypes();
+		ph_add_default_post_types();
 		$options = get_option( 'posthaste_post_types' );
 	}
 	
-	// don't need to check if user is logged in; it's already been done
 	// how to do this:
-	// 1. check if it's the prospress index
-	if ( is_page('auctions') && isset( $options['auctions'] ) ) {
-		return 'auctions';
-	}
+	// 1. check if user is logged in
+	if ( is_user_logged_in() ) {
 	
-	// 2. check get_post_type(); if it gives us something usable, use it	
-	$post_type = get_post_type();
-	if ( $post_type ) {
-	 	if ( isset( $options[$post_type] ) ) {
-			// TODO: check user's permissions
-			return $post_type;
+		// 2. check if it's the prospress index
+		if ( is_page('auctions') && isset( $options['auctions'] ) ) {
+			return 'auctions';
 		}
-	}
-	elseif ( current_user_can( 'publish_posts' ) ) {
-		return 'post';
-	}
-	
+				
+		// 3. check get_post_type(); if it gives us something usable, use it	
+		$post_type = get_post_type();
+		
+		if ( $post_type ) {
+		 	if ( isset( $options[$post_type] ) ) {
+				// TODO: check user's permissions
+				return $post_type;
+			}
+		}
+		elseif ( current_user_can( 'publish_posts' ) ) {
+			return 'post';
+		}
+	}	
 	return false;
-
 }
 
 // Which category to use
-function posthasteCatCheck() {
+function ph_cat_check() {
 	if ( is_category() )
 		return get_cat_ID( single_cat_title( '', false ) );
 	else 
@@ -134,7 +136,7 @@ function posthasteCatCheck() {
 }
 
 // Which tag to use
-function posthasteTagCheck() {
+function ph_tag_check() {
 	if ( is_tag() ) {
 		$taxarray = get_term_by( 'name', single_tag_title( '', false), 'post_tag', ARRAY_A );
 		return $taxarray['name'];
@@ -144,37 +146,30 @@ function posthasteTagCheck() {
 }
 
 // Include prospress helper file, if necessary
-function posthasteProspress() {
-	global $phVars;
-	if ( !$phVars['prospress'] ) {
+function ph_load_prospress() {
+	global $ph_vars;
+	if ( ! $ph_vars['prospress'] ) {
 		// include prospress post helper file:
 		require_once( WP_PLUGIN_DIR . '/prospress/pp-posts.php' );
-		$phVars['prospress'] = true;
+		$ph_vars['prospress'] = true;
 	}
-	return $phVars['prospress'];
+	return $ph_vars['prospress'];
 }
 
-// Add to header
-function posthasteHeader() {
-	global $phVars;
+// Create new post if it is the posthaste form submit
+function ph_process_post() {
+	global $ph_vars;
 	if ( 'POST' == $_SERVER['REQUEST_METHOD']
 		&& !empty( $_POST['action'])
 		&& $_POST['action'] == 'post'
-		&& posthasteDisplayCheck() ) { // !is_admin() will get it on all pages
-
-		if ( !is_user_logged_in() ) {
+		&& ph_display_check() ) { // !is_admin() will get it on all pages
+		
+		// check capabilities (ignore post type that is returned)
+		if ( !ph_custom_check() ) {
 			wp_redirect( get_bloginfo( 'url' ) . '/' );
 			exit;
 		}
 		
-		// check capabilities (ignore post type that is returned)
-/*
-		if ( !posthasteCustomCheck() ) {
-			wp_redirect( get_bloginfo( 'url' ) . '/' );
-			exit;
-		}
-*/
-
 		check_admin_referer( 'new-post' ); // check for valid nonce field
 		
 		global $current_user;
@@ -187,7 +182,7 @@ function posthasteHeader() {
 		// category was explicitly chosen in form)
 		if ( empty($_POST['post_title']) ) {
 			$_POST['post_title'] = strip_tags( $_POST['post_content'] );	
-			if( strlen( $_POST['post_title'] ) > 40 ) {
+			if ( strlen( $_POST['post_title'] ) > 40 ) {
 				$_POST['post_title'] = substr( $_POST['post_title'], 0, 40 ) . ' … ';
 			}
 			
@@ -204,12 +199,15 @@ function posthasteHeader() {
 		$post_id = wp_insert_post( $_POST );
 		
 		// include auction specific logic, if appropriate
-		if ( $_POST['post_type'] == 'auctions' && posthasteProspress() ) {
-
-			// start_price (digits and '.' only)
-			$start_price = preg_replace( '/[^\d.]/', '', $_POST['start_price'] );
-			$start_price = number_format( $start_price, 2, '.', '' );
-			update_post_meta( $post_id, 'start_price', $start_price );
+		if ( $_POST['post_type'] == 'auctions' && ph_load_prospress() ) {
+			
+			// starting price and buy now price
+			$price_names = array( 'start_price', 'buy_now_price' );
+			foreach ( $price_names as $price_name ) {
+				$price = preg_replace( '/[^\d.]/', '', $_POST[$price_name] );
+				$price = number_format( $price, 2, '.', '' );
+				update_post_meta( $post_id, $price_name, $price );
+			}
 			
 			if ( true ) { /* necessary for pp_schedule_end_post() */
 				$yye = $_POST['yye'];
@@ -278,23 +276,29 @@ function posthasteHeader() {
 		exit;
 	}
 }
+add_action( 'get_header', ph_process_post );
+
 
 // the post form
-function posthasteForm() {	
+function ph_display_form() {	
 	// check if we should display form and get post type
-	if ( is_user_logged_in() && posthasteDisplayCheck() && $post_type = posthasteCustomCheck() ) { 
-	
+	if ( ph_display_check() && $post_type = ph_custom_check() ) { 
+		
+		// ph_load_rich_editor() ties into this hook
+		do_action( 'ph_before_form_display' );
+			
 		// get fields (if empty, fill in defaults & then get them)
 		if ( !$fields = get_option( 'posthaste_fields' ) ) {
-			posthasteAddDefaultFields(); 
+			ph_add_default_post_fields(); 
 			$fields = get_option( 'posthaste_fields' );
 		}
 		// get taxonomies (if empty, fill in defaults & then get them)
 		if ( !$taxonomies = get_option( 'posthaste_taxonomies' ) ) {
-			posthasteAddDefaultTaxonomies();
+			ph_add_default_post_taxonomies();
 			$taxonomies = get_option( 'posthaste_taxonomies' );
 		}
 		// get info for current post type:
+		// TODO: modify to use get_post_type()
 		$post_types = get_post_types( '', 'objects' );
 		$post_type_name = $post_types[$post_type]->labels->singular_name;
 		
@@ -366,10 +370,10 @@ function posthasteForm() {
 			<div class="general-fields">
 				<?php if ( $fields['tags'] ) : ?>
 				<div class="field-wrap tags-wrap"><label for="tags_input" class="tags-label">Tags:</label>
-				<input type="text" name="tags_input" id="tags_input" value="<?php echo posthasteTagCheck(); ?>" autocomplete="off" />
+				<input type="text" name="tags_input" id="tags_input" value="<?php echo ph_tag_check(); ?>" autocomplete="off" />
 				</div>
 				<?php else :
-					$tagselect = posthasteTagCheck();
+					$tagselect = ph_tag_check();
 					echo '<input type="hidden" value="'
 							.$tagselect.'" name="tags_input" id="tags_input">';
 				endif; ?>
@@ -377,7 +381,7 @@ function posthasteForm() {
 				<?php if ( $fields['categories'] ) : ?>
 				<div class="field-wrap cats-wrap"><label for="post_category" class="cats-label">Category:</label>
 				<?php
-					$catselect = posthasteCatCheck();
+					$catselect = ph_cat_check();
 					wp_dropdown_categories( array(
 						'hide_empty' => 0,
 						'name' => 'post_category',
@@ -390,7 +394,7 @@ function posthasteForm() {
 					); ?>
 				</div>
 				<?php elseif ( count( $taxonomies ) <= 1 ) : // only use a default category if no custom taxonomies will be used
-					$catselect = posthasteCatCheck(); ?>
+					$catselect = ph_cat_check(); ?>
 				<input type="hidden" value="<?php echo $catselect ?>" name="post_category" id="post_category">
 				
 				<?php endif; ?>
@@ -451,8 +455,12 @@ function posthasteForm() {
 					</div>
 				</div>
 				<div class="field-wrap price-wrap">
-					<label for="start_price" class="taxonomy-label price-label">Start price:</label>
+					<label for="start_price" class="taxonomy-label price-label">Starting Price: $</label>
 					<input type="text" name="start_price" id="start_price" value="1.00" autocomplete="off" />
+				</div>
+				<div class="field-wrap buy-now-wrap">
+					<label for="buy_now_price" class="taxonomy-label price-label">Buy Now Price: $</label>
+					<input type="text" name="buy_now_price" id="buy_now_price" value="0.00" autocomplete="off" />
 				</div>
 			</div>
 			
@@ -476,49 +484,60 @@ function posthasteForm() {
 			 
 		</form>
 		<?php
-		echo '</div> <!-- close posthasteForm -->'."\n";
+		echo '</div> <!-- close ph_display_form -->'."\n";
 	}
 }
+// add form at user defined hook or start of loop
+// get option:
+$action = get_option( 'posthaste_action' );
+if ( !$action )
+	$action = 'loop_start';
+add_action( $action, ph_display_form );
 
 
 // remove action if loop is in sidebar, i.e. recent posts widget,
 // and if posthaste is set to load at the start of the loop
-function removePosthasteInSidebar() {
+function ph_remove_in_sidebar() {
 	$action = get_option( 'posthaste_action' );
 	// if posthaste is set to load at the start of the loop
 	if ( ! $action || $action == 'loop_start' )
-		remove_action( 'loop_start', posthasteForm );
+		remove_action( 'loop_start', ph_display_form );
 }
+add_action( 'get_sidebar', ph_remove_in_sidebar );
 
 
 // add posthaste's style.css
-function addPosthasteStylesheet() {
-	if ( is_user_logged_in() && posthasteDisplayCheck() && $post_type = posthasteCustomCheck() ) {
+function ph_load_styles() {
+	if ( ph_display_check() && $post_type = ph_custom_check() ) {
 		
 		wp_enqueue_style( 'posthaste', plugins_url( '/style.css', __FILE__ ) );
 		
 		if ( $post_type == 'auctions' ) {
 			wp_enqueue_style( 'prospress-post', get_bloginfo( 'wpurl' ) . '/wp-content/plugins/prospress/pp-posts/pp-post-admin.css' );
 		}
-						
+		
+		if ( user_can_richedit() ) {
+			wp_enqueue_style( 'thickbox' );
+		}				
 	}
 }
+add_action( 'wp_print_styles', ph_load_styles );
 
 
 // add posthaste.js and dependencies
-function addPosthasteJs() {
-	if ( is_user_logged_in() && posthasteDisplayCheck() && $post_type = posthasteCustomCheck() ) {
-		global $phVars;
+function ph_load_js() {
+	if ( ph_display_check() && $post_type = ph_custom_check() ) {
+		global $ph_vars;
 		
 		wp_enqueue_script(
 			'posthaste',	 // script name
 			plugins_url( '/posthaste.js', __FILE__ ), // url
 			array( 	'jquery',
 					'suggest' ), // dependencies
-			$phVars['version']
+			$ph_vars['version']
 		);
 				
-		if ( $post_type == 'auctions' && posthasteProspress()/* necessary for pp_touch_end_time(), which displays auction end dates */ ) {		
+		if ( $post_type == 'auctions' && ph_load_prospress()/* necessary for pp_touch_end_time(), which displays auction end dates */ ) {		
 			wp_enqueue_script( 'prospress-post', get_bloginfo( 'wpurl' ) . '/wp-content/plugins/prospress/pp-posts/pp-post-admin.js' );
 			wp_localize_script( 'prospress-post', 'ppPostL10n', array(
 				'endedOn' => __( 'Ended on:', 'prospress' ),
@@ -530,23 +549,28 @@ function addPosthasteJs() {
 		}
 	}
 }
+add_action( 'wp_print_scripts', ph_load_js );
 
 
 // add rich text editor dependencies and code
-function addPosthasteRichEditor() {
-	if ( user_can_richedit() ) {
-	
-		if (function_exists('add_thickbox')) add_thickbox();
-		wp_enqueue_script( 'common' );
-		wp_enqueue_script( 'utils' );
-		wp_enqueue_script( 'post' );
-		//wp_enqueue_script( 'media-upload' );
-		wp_enqueue_script( 'jquery-ui-core' );
-		wp_enqueue_script( 'jquery-ui-tabs' );
-		wp_enqueue_script( 'jquery-color' );
-		wp_enqueue_script( 'tiny_mce' );
-		wp_enqueue_script( 'editor' );
-		wp_enqueue_script( 'editor-functions' );
+function ph_load_rich_editor() {
+
+	if ( ph_display_check() && ph_custom_check() && user_can_richedit() ) {
+		
+		// this is only called if the posthaste form actually gets loaded,
+		// so it doesn't go in the <head>, hence why we need to use
+		// wp_print_scripts() instead of wp_enqueue_script()
+		wp_print_scripts( 'thickbox' );
+		wp_print_scripts( 'common' );
+		wp_print_scripts( 'utils' );
+		wp_print_scripts( 'post' );
+		//wp_print_scripts( 'media-upload' );
+		wp_print_scripts( 'jquery-ui-core' );
+		wp_print_scripts( 'jquery-ui-tabs' );
+		wp_print_scripts( 'jquery-color' );
+		wp_print_scripts( 'tiny_mce' );
+		wp_print_scripts( 'editor' );
+		wp_print_scripts( 'editor-functions' );
 		
 		// tiny MCE javascript helper function: ?>
 <script>
@@ -576,9 +600,13 @@ function addPosthasteRichEditor() {
 		remove_all_filters( 'mce_external_plugins' );
 	}
 }
+// load all of these dependencies only when the form
+// is actually being displayed; prevents js errors w. the editor js
+add_action( 'ph_before_form_display', ph_load_rich_editor );
+
 
 // Blatant copying from p2 here
-function posthaste_ajax_tag_search() {
+function ph_ajax_tag_search() {
 	global $wpdb;
 	$s = $_GET['q'];
 	if ( false !== strpos( $s, ',' ) ) {
@@ -598,21 +626,26 @@ function posthaste_ajax_tag_search() {
 	echo join( $results, "\n" );
 	exit;
 }
+// tell wp-admin.php about ajax tags function with wp_ajax_ action
+add_action( 'wp_ajax_ph_ajax_tag_search', 'ph_ajax_tag_search' );
 
 
 // pass wpurl from php to js
-function posthaste_jsvars() {
+function ph_load_js_vars() {
+	if ( ph_display_check() && ph_custom_check() ) :
 	?><script>
 		var phAjaxUrl = "<?php echo js_escape( get_bloginfo( 'wpurl' ) . '/wp-admin/admin-ajax.php' ); ?>";
 	</script><?php
+	endif;
 }
+add_action( 'wp_print_scripts', 'ph_load_js_vars' );
 
 
 /*
  * SETTINGS
  *
  * Modifiable in: Settings -> Writing -> Posthaste Settings
-
+ *
  */
 
 /**
@@ -620,7 +653,7 @@ function posthaste_jsvars() {
  */
  
 // add default post types to db if db is empty
-function posthasteAddDefaultPostTypes() {
+function ph_add_default_post_types() {
 	
 	// TODO: test this
 	$post_types = get_post_types( '', 'objects' );
@@ -640,7 +673,7 @@ function posthasteAddDefaultPostTypes() {
 }
 
 // add default fields to db if db is empty
-function posthasteAddDefaultFields() {
+function ph_add_default_post_fields() {
 	
 	// fields that are on by default:
 	$fields = array( 'title', 'tags', 'categories', 'draft', 'greeting and links' ); 
@@ -659,7 +692,7 @@ function posthasteAddDefaultFields() {
 }
 
 // add default taxonomies to db if db is empty
-function posthasteAddDefaultTaxonomies() {
+function ph_add_default_post_taxonomies() {
 	
 	// fields that are on by default:
 	$taxonomies = get_taxonomies( '', 'objects' );
@@ -684,14 +717,14 @@ function posthasteAddDefaultTaxonomies() {
  * Functions for displaying admin settings
  */
 
-// add_settings_field
-function posthasteSettingsInit() {
+// add settings options to "Writing" page
+function ph_register_settings() {
 
 	// add the section
 	add_settings_section(
 		'posthaste_settings_section', 
 		'Posthaste Settings', 
-		'posthasteSettingsSectionCallback', 
+		'ph_settings_description_callback', 
 		'writing'
 	);
 
@@ -699,7 +732,7 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_display', 
 		'Display Posthaste on…',
-		'posthasteDisplayCallback',
+		'ph_settings_display_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
@@ -709,7 +742,7 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_action', 
 		'Specify hook to trigger display',
-		'posthasteActionCallback',
+		'ph_settings_action_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
@@ -719,7 +752,7 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_post_types', 
 		'Post types to enable for frontend editing',
-		'posthastePostTypesCallback',
+		'ph_settings_post_types_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
@@ -729,7 +762,7 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_fields', 
 		'General elements to include in form',
-		'posthasteFieldsCallback',
+		'ph_settings_fields_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
@@ -739,7 +772,7 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_taxonomies', 
 		'Specific taxonomies to include in form',
-		'posthasteTaxonomiesCallback',
+		'ph_settings_taxonomies_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
@@ -749,7 +782,7 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_post_thumbnail', 
 		'Post thumbnail',
-		'posthastePostThumbnailCallback',
+		'ph_settings_post_thumbnail_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
@@ -759,16 +792,17 @@ function posthasteSettingsInit() {
 	add_settings_field(
 		'posthaste_asides', 
 		'“Asides” category slug',
-		'posthasteAsidesCallback',
+		'ph_settings_asides_callback',
 		'writing',
 		'posthaste_settings_section'
 	);
-	register_setting( 'writing','posthaste_asides' );
-	
+	register_setting( 'writing','posthaste_asides' );	
 }
+add_action( 'admin_init', ph_register_settings );
+
 
 // prints the section description in Posthaste settings
-function posthasteSettingsSectionCallback() {
+function ph_settings_description_callback() {
 	$post_types = get_post_types( array(), 'names' );
 	$taxonomies = get_taxonomies( array(), 'names' );
 	echo '<p>The settings below affect the behavior of the '
@@ -777,7 +811,7 @@ function posthasteSettingsSectionCallback() {
 			
 }
 
-function posthasteDisplayCallback() {
+function ph_settings_display_callback() {
 	// get current values
 	if ( !$select = get_option( 'posthaste_display') )
 		$select = 'front';
@@ -816,7 +850,7 @@ function posthasteDisplayCallback() {
 }
 
 // prints the textbox to specify Posthaste hook trigger
-function posthasteActionCallback() {
+function ph_settings_action_callback() {
 	
 	if ( !$action = get_option( 'posthaste_action' ) )
 		$action = 'loop_start';
@@ -827,7 +861,7 @@ function posthasteActionCallback() {
 }
 
 // prints the post types list in Posthaste settings
-function posthastePostTypesCallback() {
+function ph_settings_post_types_callback() {
 
 	$post_types = get_post_types( '', 'objects' );
 	
@@ -879,13 +913,13 @@ function posthastePostTypesCallback() {
 }
 
 // prints the fields selects in Posthaste settings
-function posthasteFieldsCallback() {
+function ph_settings_fields_callback() {
 	// fields you want in the form
 	$fields = array( 'title', 'tags', 'categories', 'draft', 'gravatar', 'greeting and links' ); 
 
 	// get options (if empty, fill in defaults & then get options)
 	if ( !$options = get_option( 'posthaste_fields' ) ) { 
-		posthasteAddDefaultFields(); 
+		ph_add_default_post_fields(); 
 		$options = get_option( 'posthaste_fields' );
 	}
 
@@ -910,7 +944,7 @@ function posthasteFieldsCallback() {
 }
 
 // prints the post types and taxonomies lists in Posthaste settings
-function posthasteTaxonomiesCallback() {
+function ph_settings_taxonomies_callback() {
 
 	$post_types = get_post_types( '', 'objects' );
 	
@@ -960,7 +994,7 @@ function posthasteTaxonomiesCallback() {
 }
 
 // prints the checkbox for includng the post thumbnail element
-function posthastePostThumbnailCallback() {
+function ph_settings_post_thumbnail_callback() {
 	
 	$post_thumbnail = get_option( 'posthaste_post_thumbnail' );
 	
@@ -974,7 +1008,7 @@ function posthastePostThumbnailCallback() {
 }
 
 // prints the textbox to specify Posthaste “asides” category
-function posthasteAsidesCallback() {
+function ph_settings_asides_callback() {
 	
 	if ( ! $asides_cat = get_option( 'posthaste_asides' ) )
 		$asides_cat = 'asides';
@@ -984,28 +1018,13 @@ function posthasteAsidesCallback() {
 	
 }
 
+// quick link on the plugin admin page for Posthaste meta
+function ph_register_plugin_links( $links, $file ) {
+	$base = plugin_basename( __FILE__ );
 
-/************
- * ACTIONS 
- ************/
-// add header content
-add_action( 'get_header', posthasteHeader );
-// add form at start of loop
-// get option:
-$action = get_option( 'posthaste_action' );
-if ( !$action ) $action = 'loop_start';
-add_action( $action, posthasteForm );
-// don't display form in sidebar loop (i.e. 'recent posts')
-add_action( 'get_sidebar', removePosthasteInSidebar );
-// add the css
-add_action( 'wp_print_styles', addPosthasteStylesheet );
-// add js
-add_action( 'wp_print_scripts', addPosthasteJs );
-// add rich text editor support
-add_action( 'wp_print_scripts', addPosthasteRichEditor );
-// tell wp-admin.php about ajax tags function with wp_ajax_ action
-add_action( 'wp_ajax_posthaste_ajax_tag_search', 'posthaste_ajax_tag_search' );
-// load php vars for js
-add_action( 'wp_head', 'posthaste_jsvars' );
-// add options to "Writing" admin page in 2.7 and up
-add_action( 'admin_init', posthasteSettingsInit );
+	if ( $file == $base ) {
+		$links[] = '<a href="options-writing.php">Settings</a>';
+	}
+	return $links;
+}
+add_filter( 'plugin_row_meta', 'ph_register_plugin_links', 10, 2 );
